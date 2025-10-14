@@ -192,7 +192,7 @@ app.post("/analyze", authenticate, upload.single("image"), async (req, res, next
       const rec = await axios.post(
         `${GEMINI_URL}/recommend`,
         { status, plantType, waterFreq: +waterFreq, language },
-        { timeout: 5_000 }
+        { timeout: 10_000 }
       );
       recommendation = rec.data.recommendation;
     } catch (e) {
