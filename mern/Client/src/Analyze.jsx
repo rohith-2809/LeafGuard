@@ -127,7 +127,7 @@ const Analyze = () => {
       );
       // The backend returns { prediction, recommendation }
       const { prediction, recommendation } = response.data;
-      setResult({ prediction, recommendation });
+      setResult({ prediction: status, recommendation });
     } catch (err) {
       setError(
         err.response?.data?.error || "An error occurred while analyzing."
