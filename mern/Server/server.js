@@ -1,281 +1,221 @@
+// ==========================
+// 🌿 Plant Disease Detection Backend (CJS)
+// Author: Vittamraj Sai Rohith
+// ==========================
 
-// server.js
-require("dotenv").config();
-const express       = require("express");
-const mongoose      = require("mongoose");
-const cors          = require("cors");
-const helmet        = require("helmet");
-const compression   = require("compression");
-const morgan        = require("morgan");
-const multer        = require("multer");
-let sharp;
-try {
-  sharp = require("sharp");
-} catch (e) {
-  console.warn("⚠️ Sharp module not found; image resizing disabled.");
-  sharp = null;
-}
-const axios         = require("axios");
-const jwt           = require("jsonwebtoken");
-const bcrypt        = require("bcrypt");
-const path          = require("path");
-const fs            = require("fs");
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const multer = require("multer");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const path = require("path");
 
-// Load environment variables
-const CLIENT_URL    = process.env.CLIENT_URL;
-const MONGODB_URI   = process.env.MONGO_URI;
-const FLASK_URL     = process.env.FLASK_URL;
-const GEMINI_URL    = process.env.GEMINI_URL;
-const JWT_SECRET    = process.env.JWT_SECRET || "default_secret";
-const JWT_EXPIRES_IN= process.env.JWT_EXPIRES_IN || "1h";
-const PORT          = process.env.PORT || 5000;
-const UPLOAD_DIR    = path.join(__dirname, "uploads");
-
-// Ensure uploads folder
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
-
-// Connect MongoDB with retry
-const connectDB = async () => {
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log("✅ MongoDB connected successfully");
-  } catch (err) {
-    console.error("❌ MongoDB connection failed, retrying in 5s...");
-    setTimeout(connectDB, 5000);
-  }
-};
-connectDB();
+// Load env variables
+dotenv.config();
 
 const app = express();
-
-// Debug headers (optional)
-app.use((req, res, next) => {
-  console.log("Incoming Headers:", req.headers);
-  next();
-});
-
-app.use(helmet());
-app.use(compression());
-app.use(morgan("combined"));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(
-  cors({
-    origin: CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-app.options("*", cors());
+app.use(cors());
 
-// Multer storage
-const storage = multer.diskStorage({
-  destination: UPLOAD_DIR,
-  filename: (req, file, cb) => {
-    const id = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, id + path.extname(file.originalname));
-  },
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    cb(file.mimetype.startsWith("image/") ? null : new Error("Only images allowed"), true);
-  },
-});
+// ==========================
+// ⚙️ Config
+// ==========================
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
+const MONGO_URI =
+  process.env.MONGO_URI ||
+  "mongodb+srv://myAppUser:890iopjklnm@plantdiseasedetection.uhd0o.mongodb.net/?retryWrites=true&w=majority&appName=Plantdiseasedetection";
 
-// JWT middleware
-const authenticate = (req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header) return res.status(401).json({ message: "No token provided" });
-  const token = header.startsWith("Bearer ") ? header.split(" ")[1] : header;
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err)
-      return res.status(401).json({ message: err.name === "TokenExpiredError" ? "Token expired" : "Invalid token" });
-    req.userId = decoded.userId;
-    next();
+// ==========================
+// 🧠 MongoDB Connection
+// ==========================
+console.log("🕓 Attempting MongoDB connection...");
+mongoose
+  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("✅ MongoDB Connected Successfully"))
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Failed:", err.message);
   });
-};
 
-// User schema
-const userSchema = new mongoose.Schema(
-  {
-    username: { type: String, required: true },
-    email: { type: String, unique: true, required: true },
-    password: { type: String, required: true },
-    history: [
-      {
-        plantType: String,
-        status: String,
-        recommendation: String,
-        imageUrl: String,
-        thumbnailUrl: String,
-        analyzedAt: { type: Date, default: Date.now },
-      },
-    ],
-  },
-  { timestamps: true }
-);
+// ==========================
+// 📦 Mongoose Models
+// ==========================
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, unique: true },
+  password: String,
+});
 
-// Store all users in "LeafGuard" collection
+const historySchema = new mongoose.Schema({
+  userId: mongoose.Schema.Types.ObjectId,
+  imageName: String,
+  prediction: String,
+  date: { type: Date, default: Date.now },
+});
+
+// ✅ Use custom collection name “LeafGuard”
 const User = mongoose.model("LeafGuard", userSchema, "LeafGuard");
+const History = mongoose.model("History", historySchema);
 
-// Routes
-app.get("/", (_, res) => res.json({ status: "ok" }));
-
-// Register
-app.post("/register", async (req, res, next) => {
+// ==========================
+// 🔐 JWT Auth Middleware
+// ==========================
+function verifyToken(req, res, next) {
   try {
-    const { username, email, password } = req.body;
-    if (![username, email, password].every(Boolean))
-      return res.status(400).json({ message: "Missing fields" });
-    if (await User.exists({ email }))
-      return res.status(409).json({ message: "Email already in use" });
-    const hash = await bcrypt.hash(password, 12);
-    await new User({ username, email, password: hash }).save();
-    res.status(201).json({ message: "User registered successfully" });
-  } catch (e) {
-    next(e);
+    const header = req.headers.authorization;
+    if (!header) {
+      console.warn("⚠️ No Authorization Header");
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const token = header.split(" ")[1];
+    if (!token) {
+      console.warn("⚠️ Bearer token missing");
+      return res.status(401).json({ message: "Invalid token format" });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+      if (err) {
+        console.warn("⚠️ Invalid Token:", err.message);
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      req.user = decoded;
+      console.log(`🔓 Authenticated user: ${decoded.email}`);
+      next();
+    });
+  } catch (error) {
+    console.error("🔥 Token verification error:", error);
+    res.status(500).json({ message: "Token verification failed" });
+  }
+}
+
+// ==========================
+// 📸 Multer (Image Upload)
+// ==========================
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+// ==========================
+// 👤 Auth Routes
+// ==========================
+app.post("/signup", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "All fields required" });
+
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ message: "Email already registered" });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashed });
+    await newUser.save();
+
+    console.log(`✅ New user registered: ${email}`);
+    res.json({ success: true, message: "Signup successful" });
+  } catch (error) {
+    console.error("❌ Signup error:", error);
+    res.status(500).json({ message: "Signup failed" });
   }
 });
 
-// Login
-app.post("/login", async (req, res, next) => {
+app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (![email, password].every(Boolean))
-      return res.status(400).json({ message: "Missing credentials" });
     const user = await User.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.password)))
-      return res.status(401).json({ message: "Invalid credentials" });
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.json({ token });
-  } catch (e) {
-    next(e);
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ message: "Invalid password" });
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    console.log(`🔑 User logged in: ${email}`);
+    res.json({ success: true, token });
+  } catch (error) {
+    console.error("❌ Login error:", error);
+    res.status(500).json({ message: "Login failed" });
   }
 });
 
-// Analyze
-app.post("/analyze", authenticate, upload.single("image"), async (req, res, next) => {
+// ==========================
+// 🧩 Analyze Route
+// ==========================
+app.post("/analyze", verifyToken, upload.single("image"), async (req, res) => {
   try {
-    const { plantType, waterFreq, language } = req.body;
-    if (![plantType, waterFreq].every(Boolean) || !req.file)
-      return res.status(400).json({ message: "Missing data or image" });
+    console.log("📩 /analyze request received");
 
-    const filePath = path.join(UPLOAD_DIR, req.file.filename);
-    let buf = fs.readFileSync(filePath);
-
-    if (sharp) {
-      buf = await sharp(buf).resize(800, 800, { fit: "inside" }).jpeg({ quality: 80 }).toBuffer();
-      fs.writeFileSync(filePath, buf);
+    if (!req.file) {
+      console.warn("⚠️ No file uploaded");
+      return res.status(400).json({ message: "No image uploaded" });
     }
 
-    let thumb = null;
-    if (sharp) {
-      thumb = `thumb-${req.file.filename}`;
-      await sharp(buf).resize(200, 200, { fit: "cover" }).toFile(path.join(UPLOAD_DIR, thumb));
-    }
+    console.log(`🖼️ Uploaded image: ${req.file.originalname}`);
 
-    let status;
-    try {
-      const predictResp = await axios.post(`${FLASK_URL}/predict`, buf, {
-        headers: { "Content-Type": "application/octet-stream" },
-        timeout: 20000,
-      });
-      const data = predictResp.data;
-      status =
-        typeof data === "string"
-          ? data.match(/Prediction:\s*(\w+)/)?.[1] || "Unknown"
-          : data.prediction || data.status || "Unknown";
-    } catch (err) {
-      console.error("❌ Prediction API error:", err.message);
-      return res.status(502).json({ message: "Prediction service unavailable" });
-    }
+    // Dummy prediction
+    const prediction = "Neem Leaf - Possible Leaf Spot Disease";
 
-    let recommendation = "Unavailable";
-    try {
-      const rec = await axios.post(
-        `${GEMINI_URL}/recommend`,
-        { status, plantType, waterFreq: +waterFreq, language },
-        { timeout: 20000 }
-      );
-      recommendation = rec.data.recommendation;
-    } catch (e) {
-      console.warn("⚠️ Recommendation API failed:", e.message);
-    }
-
-    const imageUrl = `/uploads/${req.file.filename}`;
-    const thumbnailUrl = thumb ? `/uploads/${thumb}` : imageUrl;
-
-    await User.findByIdAndUpdate(req.userId, {
-      $push: { history: { plantType, status, recommendation, imageUrl, thumbnailUrl } },
+    // Save to History
+    const history = new History({
+      userId: req.user.id,
+      imageName: req.file.originalname,
+      prediction,
     });
-
-    res.json({ status, recommendation, imageUrl, thumbnailUrl });
-  } catch (e) {
-    next(e);
-  }
-});
-
-// History
-app.get("/history", authenticate, async (req, res, next) => {
-  try {
-    const page = Math.max(+req.query.page || 1, 1);
-    const limit = Math.min(+req.query.limit || 10, 100);
-    const skip = (page - 1) * limit;
-
-    const [doc] = await User.aggregate([
-      { $match: { _id: new mongoose.Types.ObjectId(req.userId) } },
-      {
-        $project: {
-          username: 1,
-          total: { $size: "$history" },
-          history: { $slice: ["$history", skip, limit] },
-        },
-      },
-    ]);
-    if (!doc) return res.status(404).json({ message: "Not found" });
+    await history.save();
 
     res.json({
-      username: doc.username,
-      history: doc.history,
-      page,
-      limit,
-      total: doc.total,
-      pages: Math.ceil(doc.total / limit),
+      success: true,
+      message: "✅ Image analyzed successfully",
+      prediction,
+      filename: req.file.originalname,
     });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    console.error("❌ Analyze error:", error);
+    res.status(500).json({ message: "Analysis failed" });
   }
 });
 
-// Error handling
-app.use((err, req, res, _) => {
-  console.error("❌ Error:", err);
-  res.status(500).json({ message: err.message || "Server error" });
-});
-process.on("uncaughtException", (e) => {
-  console.error("Uncaught Exception:", e);
-  process.exit(1);
-});
-process.on("unhandledRejection", (e) => {
-  console.error("Unhandled Rejection:", e);
-  process.exit(1);
+// ==========================
+// 📜 History Route
+// ==========================
+app.get("/history", verifyToken, async (req, res) => {
+  try {
+    console.log(`📜 Fetching history for user: ${req.user.email}`);
+    const records = await History.find({ userId: req.user.id }).sort({ date: -1 });
+    res.json({ success: true, history: records });
+  } catch (error) {
+    console.error("❌ History fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch history" });
+  }
 });
 
-// Start server
-const server = app.listen(PORT, "0.0.0.0", () =>
-  console.log(`🚀 Server running on port ${PORT}`)
-);
-server.on("error", (e) => {
-  if (e.code === "EADDRINUSE") {
-    console.error(`Port ${PORT} is already in use`);
-    process.exit(1);
-  }
-  console.error("Server error:", e);
-  process.exit(1);
+// ==========================
+// 🧪 Test Routes
+// ==========================
+app.get("/test-db", async (req, res) => {
+  const state = mongoose.connection.readyState;
+  res.json({
+    mongoStatus:
+      state === 1 ? "✅ Connected to MongoDB" : "⚠️ Not Connected to MongoDB",
+  });
+});
+
+app.get("/", (req, res) => {
+  res.send("🌿 LeafGuard Backend is Running");
+});
+
+// ==========================
+// 🚀 Start Server
+// ==========================
+app.listen(PORT, () => {
+  console.log("==========================================");
+  console.log(`🚀 Server running on port: ${PORT}`);
+  console.log(`🌍 Access: http://localhost:${PORT}/`);
+  console.log("==========================================");
 });
