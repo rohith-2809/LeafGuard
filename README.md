@@ -28,9 +28,9 @@ Designed for agritech platforms, research labs, greenhouse automation, and intel
 
 ---
 
-## 🚀 Tech Stack (Deep Engineering View)
+## Tech Stack (Deep Engineering View)
 
-### 🧠 AI & Machine Learning
+### AI & Machine Learning
 
 * ResNet50 backbone fine-tuned using a two-phase transfer learning pipeline
 * 14,000-image dataset spanning multi-class leaf conditions
@@ -40,28 +40,28 @@ Designed for agritech platforms, research labs, greenhouse automation, and intel
 * Fully quantization-tolerant architecture for edge deployment (optional)
 * Hugging Face Inference Endpoints for distributed cloud prediction
 
-### 💻 Frontend Engineering
+### Frontend Engineering
 
 * React 18 + Vite providing low-latency, modular component rendering
 * TailwindCSS for atomic, GPU-friendly UI styling
 * Client-side image compression & pre-processing for faster uploads
 * Non-blocking asynchronous prediction flow with UI state isolation
 
-### 🔧 Backend Architecture
+### Backend Architecture
 
 * Node.js + Express acting as an API gateway and service coordinator
 * Microservice separation between inference, reasoning, and data persistence
 * Secure request isolation for synchronous and asynchronous prediction cycles
 * Data contracts for standardized image and prediction payloads
 
-### ☁️ Model Serving & Microservices
+### Model Serving & Microservices
 
 * Python Flask microservice serving DL inference with TensorFlow/Keras
 * Memory-optimized model loading with warm-start execution
 * Response normalization for downstream AI reasoning
 * Scalable service endpoints for high-throughput image classification
 
-### 🗄️ Database Layer
+### Database Layer
 
 * MongoDB storing structured diagnostic logs, image metadata, disease labels, and system events
 * TTL-based archival mechanism for automated cleanup
@@ -69,22 +69,22 @@ Designed for agritech platforms, research labs, greenhouse automation, and intel
 
 ---
 
-## 📁 Platform Features (Technical Breakdown)
+## Platform Features (Technical Breakdown)
 
-### 🌱 High-Accuracy Disease Detection
+### High-Accuracy Disease Detection
 
 * Multi-class classification of leaf diseases with high precision
 * Robust against real-world noise: illumination shifts, shadows, leaf angle variations
 * Reduction of false positives via regularization & heavy augmentation
 * Supports continuous retraining pipelines for dataset extensions
 
-### 🔬 Diagnostic Intelligence
+### Diagnostic Intelligence
 
 * Semantic interpretation layer transforms raw model output into human-readable diagnosis
 * Disease descriptors mapped through a controlled knowledge graph
 * Extracts severity indicators based on classification confidence distribution
 
-### 🩺 Advanced Treatment Recommendation Engine
+### Advanced Treatment Recommendation Engine
 
 Powered by **Gemini Flash 1.5**, LeafGuard provides:
 
@@ -96,14 +96,14 @@ Powered by **Gemini Flash 1.5**, LeafGuard provides:
 
 This creates a full diagnostic loop, not just a prediction.
 
-### 📊 Full-Stack Reporting System
+### Full-Stack Reporting System
 
 * Each prediction is stored as a structured document
 * Includes classification scores, inference metadata, timestamps, and reasoning output
 * Viewable from a user-friendly dashboard
 * Enables long-term disease monitoring and trend analysis
 
-### ⚡ High-Performance Execution
+### High-Performance Execution
 
 * Model loaded once in memory for microsecond-level inference
 * Proxy-level optimization between Node and Flask
@@ -112,7 +112,7 @@ This creates a full diagnostic loop, not just a prediction.
 
 ---
 
-## 🔥 System Advantages
+## System Advantages
 
 * Combines vision AI + full-stack engineering + generative intelligence
 * Production-grade architecture, not a prototype
@@ -123,7 +123,7 @@ This creates a full diagnostic loop, not just a prediction.
 
 ---
 
-## 🌍 Use Cases (Technical & Practical)
+## Use Cases (Technical & Practical)
 
 * Smart agriculture and precision farming systems
 * Automated greenhouse health monitoring
@@ -135,7 +135,7 @@ This creates a full diagnostic loop, not just a prediction.
 
 ---
 
-## 🏁 Summary
+## Summary
 
 LeafGuard unifies three domains into a powerful agricultural AI ecosystem:
 
