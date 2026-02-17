@@ -27,7 +27,7 @@ const navItems = [
 // Blog posts array (using local images from the public folder)
 const blogPosts = [
   {
-    title: "Caring for Your Garden",
+    title: "Care for Your Garden",
     description: "Discover essential tips to keep your garden thriving.",
     image: "/plant-image.jpg",
   },
