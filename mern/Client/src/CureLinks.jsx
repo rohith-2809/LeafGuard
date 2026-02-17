@@ -190,7 +190,7 @@ const diseaseCureData = {
 
 const CureLinks = () => {
   const navigate = useNavigate();
-  const { disease } = useParams(); // Retrieved disease from URL parameter
+  const { disease } = useParams(); // Retrieved disease from URL parameter 
   const [loading, setLoading] = useState(true);
   const [isInfoVisible, setInfoVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
