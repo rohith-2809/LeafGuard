@@ -7,7 +7,7 @@ import os
 
 app = Flask(__name__)
 CORS(app)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO) 
 
 # Load the Gemini API key from the environment variable
 API_KEY = os.environ.get("API_KEY")
