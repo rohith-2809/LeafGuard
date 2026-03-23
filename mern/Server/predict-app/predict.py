@@ -58,7 +58,6 @@ def parse_result(text: str):
     if match:
         return match.group(1), float(match.group(2))
     return text, 0.0
-
 # ——— Health check ————————————————
 @app.route("/", methods=["GET", "HEAD"])
 def health():
