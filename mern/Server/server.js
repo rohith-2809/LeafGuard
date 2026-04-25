@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
-const morgan        = require("morgan");
+const morgan = require("morgan");
 const multer        = require("multer");
 let sharp;
 try {
