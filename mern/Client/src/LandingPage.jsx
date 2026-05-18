@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"; 
 import { useState } from "react"; 
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet"; 
 import {
   FaBars,
   FaBrain,
