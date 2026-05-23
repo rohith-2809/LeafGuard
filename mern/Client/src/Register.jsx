@@ -12,6 +12,7 @@ const Register = () => {
   });
   const [error, setError] = useState("");
 
+  
   // Use the direct video URL as the initial video source
   const fallbackVideoUrl = "https://www.pexels.com/video/close-up-of-a-plant-and-the-sunlight-8745490/";
   const [videoSrc, setVideoSrc] = useState(fallbackVideoUrl);
